@@ -27,8 +27,8 @@
 
 (defn user-based-recommender
   [data-location & {:keys [neighborhood-size cache]
-                    :or {:neighborhood-size 10
-                         :cache false}}]
+                    :or {neighborhood-size 10
+                         cache false}}]
   (let [model (file-data-model data-location)
         similarity (user-similarity model)
         neighborhood (user-neighborhood neighborhood-size similarity model)
