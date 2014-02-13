@@ -16,7 +16,8 @@
 (def system
   "A Var containing an object representing the application under
   development."
-  {:data "sample-data/sample.txt"})
+  {:data-ratings "sample-data/data-ratings.csv"
+   :data-likes "sample-data/data-likes.csv"})
 
 (defn init
   "Creates and initializes the system under development in the Var
