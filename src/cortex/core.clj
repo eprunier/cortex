@@ -8,19 +8,29 @@
             NearestNUserNeighborhood]
            [org.apache.mahout.cf.taste.impl.recommender 
             GenericUserBasedRecommender
+            GenericBooleanPrefUserBasedRecommender
             CachingRecommender]))
 
-(defn- file-data-model
+;;
+;; Data model builders.
+;;
+
+(defn file-data-model
   [location]
   (FileDataModel. (io/file location)))
 
-(defn- user-neighborhood
+
+;;
+;; Neighborhood builders.
+;;
+
+(defn- default-neighborhood
   [nb-users similarity model]
   (NearestNUserNeighborhood. nb-users similarity model))
 
 
 ;;
-;; Similarity functions
+;; Similarity builders
 ;;
 
 (defn- likelihood-similarity
@@ -33,26 +43,54 @@
 
 
 ;;
+;; Recommender builders
+;;
+
+(defn- likelihood-recommender
+  [model neighborhood similarity]
+  (GenericBooleanPrefUserBasedRecommender. model neighborhood similarity))
+
+(defn- rating-recommender
+  [model neighborhood similarity]
+  (GenericUserBasedRecommender. model neighborhood similarity))
+
+
+;;
 ;; Recommender creation
 ;;
 
-(defn- user-based-recommender-impl
-  [data-location similarity-fn & {:keys [neighborhood-size cache]
-                    :or {neighborhood-size 10
-                         cache false}}]
-  (let [model (file-data-model data-location)
-        similarity (similarity-fn model)
-        neighborhood (user-neighborhood neighborhood-size similarity model)
-        recommender (GenericUserBasedRecommender. model neighborhood similarity)]
+(defn- create-recommender
+  "Create a recommender based on a data-model and a similarity function."
+  [data-model similarity-builder neighborhood-builder recommender-builder
+   {:keys [neighborhood-size cache] 
+    :or {neighborhood-size 10
+         cache false}}]
+  (let [similarity (similarity-builder data-model)
+        neighborhood (neighborhood-builder neighborhood-size similarity data-model)
+        recommender (recommender-builder data-model neighborhood similarity)]
     (if cache
       (CachingRecommender. recommender)
       recommender)))
 
-(defmulti user-based-recommender :type)
+(defmulti user-based-recommender 
+  "User based recommender definition based on type which can be :like or :rate" 
+  :type)
+
 (defmethod user-based-recommender :like [args]
-  (user-based-recommender-impl (:data args) likelihood-similarity))
+  (create-recommender 
+   (file-data-model (:data-specs args))
+   likelihood-similarity
+   default-neighborhood
+   likelihood-recommender
+   (:options args)))
+
 (defmethod user-based-recommender :rate [args]
-  (user-based-recommender-impl (:data args) rating-similarity))
+  (create-recommender 
+   (file-data-model (:data-specs args))
+   rating-similarity
+   default-neighborhood
+   rating-recommender
+   (:options args)))
 
 
 ;;
@@ -62,5 +100,6 @@
 (defn recommend
   [recommender user nb-results]
   (map (fn [result] 
-         [(.getItemID result) (.getValue result)])
+         {:item (.getItemID result) 
+          :value (.getValue result)})
        (.recommend recommender user nb-results)))
