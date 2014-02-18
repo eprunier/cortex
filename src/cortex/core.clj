@@ -18,15 +18,16 @@
   [nb-users similarity model]
   (NearestNUserNeighborhood. nb-users similarity model))
 
+
 ;;
 ;; Similarity functions
 ;;
 
-(defn likelihood-similarity
+(defn- likelihood-similarity
   [model]
   (LogLikelihoodSimilarity. model))
 
-(defn rating-similarity
+(defn- rating-similarity
   [model]
   (PearsonCorrelationSimilarity. model))
 
@@ -35,7 +36,7 @@
 ;; Recommender creation
 ;;
 
-(defn user-based-recommender
+(defn- user-based-recommender-impl
   [data-location similarity-fn & {:keys [neighborhood-size cache]
                     :or {neighborhood-size 10
                          cache false}}]
@@ -47,10 +48,19 @@
       (CachingRecommender. recommender)
       recommender)))
 
+(defmulti user-based-recommender :type)
+(defmethod user-based-recommender :like [args]
+  (user-based-recommender-impl (:data args) likelihood-similarity))
+(defmethod user-based-recommender :rate [args]
+  (user-based-recommender-impl (:data args) rating-similarity))
+
+
 ;;
 ;; Recommendations generation
 ;;
 
 (defn recommend
   [recommender user nb-results]
-  (.recommend recommender user nb-results))
+  (map (fn [result] 
+         [(.getItemID result) (.getValue result)])
+       (.recommend recommender user nb-results)))
