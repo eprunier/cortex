@@ -11,7 +11,10 @@
    [clojure.string :as str]
    [clojure.test :as test]
    [clojure.tools.namespace.repl :refer (refresh refresh-all)]
-   [cortex.core :as cortex]))
+   [cortex.core :as cortex]
+   [cortex.data-model :as data-model]
+   [cortex.neighborhood :as neighborhood]
+   [cortex.similarity :as similarity]))
 
 (def system
   "A Var containing an object representing the application under

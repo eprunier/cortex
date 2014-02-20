@@ -1,96 +1,64 @@
 (ns cortex.core
-  (:require [clojure.java.io :as io])
-  (:import [org.apache.mahout.cf.taste.impl.model.file FileDataModel]
-           [org.apache.mahout.cf.taste.impl.similarity
-            PearsonCorrelationSimilarity
-            LogLikelihoodSimilarity]
-           [org.apache.mahout.cf.taste.impl.neighborhood
-            NearestNUserNeighborhood]
-           [org.apache.mahout.cf.taste.impl.recommender 
+  (:import [org.apache.mahout.cf.taste.impl.recommender 
             GenericUserBasedRecommender
-            GenericBooleanPrefUserBasedRecommender
-            CachingRecommender]))
-
-;;
-;; Data model builders.
-;;
-
-(defn file-data-model
-  [location]
-  (FileDataModel. (io/file location)))
-
-
-;;
-;; Neighborhood builders.
-;;
-
-(defn- default-neighborhood
-  [nb-users similarity model]
-  (NearestNUserNeighborhood. nb-users similarity model))
-
-
-;;
-;; Similarity builders
-;;
-
-(defn- likelihood-similarity
-  [model]
-  (LogLikelihoodSimilarity. model))
-
-(defn- rating-similarity
-  [model]
-  (PearsonCorrelationSimilarity. model))
-
+            GenericBooleanPrefUserBasedRecommender]
+           [org.apache.mahout.cf.taste.eval RecommenderBuilder]
+           [org.apache.mahout.cf.taste.impl.eval GenericRecommenderIRStatsEvaluator])
+  (:require [clojure.java.io :as io]
+            [cortex.neighborhood :as cn]
+            [cortex.similarity :as cs]))
 
 ;;
 ;; Recommender builders
 ;;
 
+(defn- recommender-builder
+  [neighborhood-fn similarity-fn recommender-fn]
+  (proxy [RecommenderBuilder] []
+    (buildRecommender [data-model]
+      (let [similarity (similarity-fn data-model)
+            neighborhood (neighborhood-fn 10 similarity data-model)]
+        (recommender-fn data-model neighborhood similarity)))))
+
 (defn- likelihood-recommender
-  [model neighborhood similarity]
-  (GenericBooleanPrefUserBasedRecommender. model neighborhood similarity))
+  [data-model neighborhood similarity]
+  (GenericBooleanPrefUserBasedRecommender. data-model neighborhood similarity))
 
 (defn- rating-recommender
-  [model neighborhood similarity]
-  (GenericUserBasedRecommender. model neighborhood similarity))
+  [data-model neighborhood similarity]
+  (GenericUserBasedRecommender. data-model neighborhood similarity))
 
 
 ;;
 ;; Recommender creation
 ;;
 
-(defn- create-recommender
-  "Create a recommender based on a data-model and a similarity function."
-  [data-model similarity-builder neighborhood-builder recommender-builder
-   {:keys [neighborhood-size cache] 
-    :or {neighborhood-size 10
-         cache false}}]
-  (let [similarity (similarity-builder data-model)
-        neighborhood (neighborhood-builder neighborhood-size similarity data-model)
-        recommender (recommender-builder data-model neighborhood similarity)]
-    (if cache
-      (CachingRecommender. recommender)
-      recommender)))
+(defn- create-recommender-builder
+  "Create a recommender builder."
+  [data-model similarity-fn neighborhood-fn recommender-fn {:keys [neighborhood-size] 
+                                                            :or {neighborhood-size 10}}]
+  (let [similarity (similarity-fn data-model)
+        neighborhood (neighborhood-fn neighborhood-size similarity data-model)
+        recommender (recommender-builder neighborhood similarity recommender-fn)]))
 
-(defmulti user-based-recommender 
-  "User based recommender definition based on type which can be :like or :rate" 
-  :type)
+(defmulti user-based-recommender-builder 
+  "User based recommender definition based on type which can be :like or :rate.
+Exemple: (user-based-recommender {:type :like :data-specs \"/tmp/data.csv\"})" 
+  keyword)
 
-(defmethod user-based-recommender :like [args]
-  (create-recommender 
-   (file-data-model (:data-specs args))
-   likelihood-similarity
-   default-neighborhood
-   likelihood-recommender
-   (:options args)))
+(defmethod user-based-recommender-builder :like [args]
+  (recommender-builder cn/default-neighborhood
+                       cs/likelihood-similarity
+                       likelihood-recommender))
 
-(defmethod user-based-recommender :rate [args]
-  (create-recommender 
-   (file-data-model (:data-specs args))
-   rating-similarity
-   default-neighborhood
-   rating-recommender
-   (:options args)))
+(defmethod user-based-recommender-builder :rate [args]
+  (recommender-builder cn/default-neighborhood
+                       cs/rating-similarity
+                       rating-recommender))
+
+(defn recommender
+  [recommender-builder data-model]
+  (.buildRecommender recommender-builder data-model))
 
 
 ;;
@@ -103,3 +71,31 @@
          {:item (.getItemID result) 
           :value (.getValue result)})
        (.recommend recommender user nb-results)))
+
+
+;;
+;; Recommendation evaluation
+;;
+
+(defn- stats
+  "Extract stats from recommender evaluation."
+  [result]
+  {:precision (.getPrecision result)
+   :recall (.getRecall result)
+   :fallOut (.getFallOut result)
+   :reach (.getReach result)
+   :ndcg (.getNormalizedDiscountedCumulativeGain result)
+   :f1 (.getF1Measure result)})
+
+(defn evaluate
+  "Evaluate a recommender with a data model."
+  [recommender-builder data-model]
+  (-> (GenericRecommenderIRStatsEvaluator.)
+      (.evaluate recommender-builder
+                 nil
+                 data-model
+                 nil
+                 2
+                 GenericRecommenderIRStatsEvaluator/CHOOSE_THRESHOLD
+                 1.0)
+      stats))
