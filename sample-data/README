@@ -1,0 +1,7 @@
+Data sets from grouplens.com
+
+Data sets with ratings
+- ua.base (MovieLens 100k data set)
+
+Data sets without ratings
+- user_friends.dat (Last.FM data set)
