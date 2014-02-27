@@ -1,59 +1,31 @@
 (ns cortex.core
-  (:import [org.apache.mahout.cf.taste.impl.recommender 
-            GenericUserBasedRecommender
-            GenericBooleanPrefUserBasedRecommender]
-           [org.apache.mahout.cf.taste.eval RecommenderBuilder]
+  (:import [org.apache.mahout.cf.taste.eval RecommenderBuilder]
            [org.apache.mahout.cf.taste.impl.eval 
             GenericRecommenderIRStatsEvaluator
             AverageAbsoluteDifferenceRecommenderEvaluator])
-  (:require [clojure.java.io :as io]
+  (:require [cortex.similarity :as cs]
             [cortex.neighborhood :as cn]
-            [cortex.similarity :as cs]))
-
-;;
-;; Recommender creation
-;;
-
-(defn- likelihood-recommender
-  [data-model neighborhood similarity]
-  (GenericBooleanPrefUserBasedRecommender. data-model neighborhood similarity))
-
-(defn- rating-recommender
-  [data-model neighborhood similarity]
-  (GenericUserBasedRecommender. data-model neighborhood similarity))
-
-(defn recommender
-  [recommender-builder data-model]
-  (.buildRecommender recommender-builder 
-                     data-model))
+            [cortex.recommender :as cr]))
 
 
 ;;
 ;; Recommender builder
 ;;
 
-(defn- recommender-builder
-  [neighborhood-fn similarity-fn recommender-fn]
-  (proxy [RecommenderBuilder] []
-    (buildRecommender [data-model]
-      (let [similarity (similarity-fn data-model)
-            neighborhood (neighborhood-fn 10 similarity data-model)]
-        (recommender-fn data-model neighborhood similarity)))))
-
 (defmulti user-based-recommender-builder 
   "User based recommender definition based on type which can be :like or :rate.
 Exemple: (user-based-recommender {:type :like :data-specs \"/tmp/data.csv\"})" 
   keyword)
 
-(defmethod user-based-recommender-builder :like [args]
-  (recommender-builder cn/default-neighborhood
-                       cs/likelihood-similarity
-                       likelihood-recommender))
+(defmethod user-based-recommender-builder :likes [args]
+  (cr/recommender-builder cs/likes-similarity
+                          cn/default-neighborhood
+                          cr/likes-recommender))
 
-(defmethod user-based-recommender-builder :rate [args]
-  (recommender-builder cn/default-neighborhood
-                       cs/rating-similarity
-                       rating-recommender))
+(defmethod user-based-recommender-builder :ratings [args]
+  (cr/recommender-builder cs/ratings-similarity
+                          cn/default-neighborhood
+                          cr/ratings-recommender))
 
 
 ;;
@@ -72,8 +44,8 @@ Exemple: (user-based-recommender {:type :like :data-specs \"/tmp/data.csv\"})"
 ;; Recommendation evaluation
 ;;
 
-(defn evaluate
-  "Evaluate a recommender for the given data model."
+(defn score
+  "Compute the score for a recommender and a data model."
   [recommender-builder data-model]
   (-> (AverageAbsoluteDifferenceRecommenderEvaluator.)
       (.evaluate recommender-builder

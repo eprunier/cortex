@@ -3,10 +3,10 @@
             PearsonCorrelationSimilarity
             LogLikelihoodSimilarity]))
 
-(defn likelihood-similarity
+(defn likes-similarity
   [model]
   (LogLikelihoodSimilarity. model))
 
-(defn rating-similarity
+(defn ratings-similarity
   [model]
   (PearsonCorrelationSimilarity. model))

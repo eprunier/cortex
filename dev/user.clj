@@ -12,9 +12,9 @@
    [clojure.test :as test]
    [clojure.tools.namespace.repl :refer (refresh refresh-all)]
    [cortex.core :as cortex]
-   [cortex.data-model :as data-model]
-   [cortex.neighborhood :as neighborhood]
-   [cortex.similarity :as similarity]))
+   [cortex.similarity :as cs]   
+   [cortex.neighborhood :as cn]
+   [cortex.data :as cd]))
 
 (def system
   "A Var containing an object representing the application under
@@ -29,12 +29,44 @@
   (alter-var-root #'system
                   (fn [system]
                     (assoc system
-                      :ratings (-> system :ratings-path data-model/file-data-model)
-                      :likes (-> system :likes-path data-model/likes-file-data-model)))))
+                      :ratings (-> system :ratings-path cd/load-ratings-file)
+                      :likes (-> system :likes-path cd/load-likes-file)))))
 
-(defn start
-  "Starts the system running, updates the Var #'system."
-  [])
+(defn score-ubl-recommender
+  []
+  (let [recommender-builder (cortex/user-based-recommender-builder :likes)
+        data-model (-> system
+                       :likes-path
+                       cd/load-likes-file)]
+    (cortex/score recommender-builder
+                  data-model)))
+
+(defn stats-ubl-recommender
+  []
+  (let [recommender-builder (cortex/user-based-recommender-builder :likes)
+        data-model (-> system
+                       :likes-path
+                       cd/load-likes-file)]
+    (cortex/stats recommender-builder
+                  data-model)))
+
+(defn score-ubr-recommender
+  []
+  (let [recommender-builder (cortex/user-based-recommender-builder :ratings)
+        data-model (-> system
+                       :ratings-path
+                       cd/load-ratings-file)]
+    (cortex/score recommender-builder
+                  data-model)))
+
+(defn stats-ubr-recommender
+  []
+  (let [recommender-builder (cortex/user-based-recommender-builder :ratings)
+        data-model (-> system
+                       :ratings-path
+                       cd/load-ratings-file)]
+    (cortex/stats recommender-builder
+                  data-model)))
 
 (defn stop
   "Stops the system if it is currently running, updates the Var
@@ -48,7 +80,6 @@
   "Initializes and starts the system running."
   []
   (init)
-  (start)
   :ready)
 
 (defn reset
