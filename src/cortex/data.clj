@@ -32,8 +32,10 @@
 ;; Data model builders
 ;;
 
-(defn model-builder
-  [])
-
-(defn likes-model-builder
-  [])
+(defn likes-data-builder
+  []
+  (proxy [DataModelBuilder] []
+    (buildDataModel [trainingData]
+      (-> trainingData
+          (GenericBooleanPrefDataModel/toDataMap)
+          (GenericBooleanPrefDataModel.)))))

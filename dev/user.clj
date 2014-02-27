@@ -33,13 +33,13 @@
                       :likes (-> system :likes-path cd/load-likes-file)))))
 
 (defn score-ubl-recommender
-  []
-  (let [recommender-builder (cortex/user-based-recommender-builder :likes)
-        data-model (-> system
-                       :likes-path
-                       cd/load-likes-file)]
-    (cortex/score recommender-builder
-                  data-model)))
+  ([]
+     (score-ubl-recommender (:likes-path system)))
+  ([data-path]
+     (let [recommender-builder (cortex/user-based-recommender-builder :likes)
+           data-model (cd/load-likes-file data-path)]
+       (cortex/score recommender-builder
+                     data-model))))
 
 (defn stats-ubl-recommender
   []
@@ -51,13 +51,13 @@
                   data-model)))
 
 (defn score-ubr-recommender
-  []
-  (let [recommender-builder (cortex/user-based-recommender-builder :ratings)
-        data-model (-> system
-                       :ratings-path
-                       cd/load-ratings-file)]
-    (cortex/score recommender-builder
-                  data-model)))
+  ([]
+     (score-ubr-recommender (:ratings-path system)))
+  ([data-path]
+     (let [recommender-builder (cortex/user-based-recommender-builder :ratings)
+           data-model (cd/load-ratings-file data-path)]
+       (cortex/score recommender-builder
+                     data-model))))
 
 (defn stats-ubr-recommender
   []
