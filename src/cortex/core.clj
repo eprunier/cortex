@@ -2,30 +2,54 @@
   (:import [org.apache.mahout.cf.taste.eval RecommenderBuilder]
            [org.apache.mahout.cf.taste.impl.eval 
             GenericRecommenderIRStatsEvaluator
-            AverageAbsoluteDifferenceRecommenderEvaluator])
-  (:require [cortex.similarity :as cs]
-            [cortex.neighborhood :as cn]
-            [cortex.recommender :as cr]))
-
+            AverageAbsoluteDifferenceRecommenderEvaluator]))
 
 ;;
 ;; Recommender builder
 ;;
 
-(defmulti user-based-recommender-builder 
-  "User based recommender definition based on type which can be :like or :rate.
-Exemple: (user-based-recommender {:type :like :data-specs \"/tmp/data.csv\"})" 
-  keyword)
+(defn- parse-similarity
+  "Parse specs and return a similarity function."
+  [specs]
+  (if (vector? specs)
+    (first specs)
+    specs))
 
-(defmethod user-based-recommender-builder :likes [args]
-  (cr/recommender-builder cs/likes-similarity
-                          cn/default-neighborhood
-                          cr/likes-recommender))
+(defn- parse-neighborhood
+  "Parse specs and return a neighborood function that takes a data model as parameter."
+  [specs similarity-fn]
+  (if (vector? specs)
+    (let [neighborood-fn (first specs)
+          options (rest specs)]
+      (fn [model]
+        (neighborood-fn (similarity-fn model) model options)))
+    (fn [model]
+      (specs (similarity-fn model) model))))
 
-(defmethod user-based-recommender-builder :ratings [args]
-  (cr/recommender-builder cs/ratings-similarity
-                          cn/default-neighborhood
-                          cr/ratings-recommender))
+(defn- parse-recommender
+  "Parse specs and return a recommender function that takes a data model as parameter."
+  [specs similarity-fn neighborhood-fn]
+  (let [recommender-fn (if (vector? specs) (first specs) specs)]
+    (fn [model]
+      (recommender-fn (similarity-fn model) 
+                      (neighborhood-fn model) 
+                      model))))
+
+(defn create-recommender-builder
+  "Parse specs and create a recommender."
+  [{:keys [similarity neighborood recommender]} model]
+  (let [similarity-fn (parse-similarity similarity)
+        neighborood-fn (parse-neighborhood neighborood similarity-fn)
+        recommender-fn (parse-recommender recommender similarity-fn neighborood-fn)]
+    (proxy [RecommenderBuilder] []
+      (buildRecommender [model]
+        (recommender-fn model)))))
+
+(defn recommender
+  "Create a recommender based on the given builder and data model."
+  [recommender-builder model]
+  (.buildRecommender recommender-builder 
+                     model))
 
 
 ;;
@@ -46,12 +70,12 @@ Exemple: (user-based-recommender {:type :like :data-specs \"/tmp/data.csv\"})"
 
 (defn score
   "Compute the score for a recommender and a data model."
-  [recommender-builder data-model]
+  [specs model & [model-builder]]
   (-> (AverageAbsoluteDifferenceRecommenderEvaluator.)
-      (.evaluate recommender-builder
-                 nil
-                 data-model
-                 0.7
+      (.evaluate (create-recommender-builder specs model)
+                 model-builder
+                 model
+                 0.9
                  1.0)))
 
 (defn- parse-stats
@@ -66,13 +90,13 @@ Exemple: (user-based-recommender {:type :like :data-specs \"/tmp/data.csv\"})"
 
 (defn stats
   "Compute stats for a recommender and a data model."
-  [recommender-builder data-model]
+  [specs model & [model-builder]]
   (-> (GenericRecommenderIRStatsEvaluator.)
-      (.evaluate recommender-builder
+      (.evaluate (create-recommender-builder specs model)
+                 model-builder
+                 model
                  nil
-                 data-model
-                 nil
-                 2
+                 10
                  GenericRecommenderIRStatsEvaluator/CHOOSE_THRESHOLD
                  1.0)
       parse-stats))

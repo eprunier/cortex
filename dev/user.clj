@@ -14,59 +14,59 @@
    [cortex.core :as cortex]
    [cortex.similarity :as cs]   
    [cortex.neighborhood :as cn]
-   [cortex.data :as cd]))
+   [cortex.recommender :as cr]
+   [cortex.model :as cm]))
 
 (def system
   "A Var containing an object representing the application under
   development."
-  {:ratings-path "sample-data/ua.base"
-   :likes-path "sample-data/user_friends.dat"})
+  {:data {:intro "sample-data/intro.csv" 
+          :sample "sample-data/ua.base"
+          :boolean-sample "sample-data/user_friends.dat"}})
 
 (defn init
   "Creates and initializes the system under development in the Var
   #'system."
-  []
-  (alter-var-root #'system
-                  (fn [system]
-                    (assoc system
-                      :ratings (-> system :ratings-path cd/load-ratings-file)
-                      :likes (-> system :likes-path cd/load-likes-file)))))
+  [])
 
-(defn score-ubl-recommender
-  ([]
-     (score-ubl-recommender (:likes-path system)))
-  ([data-path]
-     (let [recommender-builder (cortex/user-based-recommender-builder :likes)
-           data-model (cd/load-likes-file data-path)]
-       (cortex/score recommender-builder
-                     data-model))))
+(defn recommender
+  [data-key]
+  (let [model (cm/load-file (get-in system [:data (keyword data-key)]))
+        builder (-> {:similarity cs/log-likelihood
+                     :neighborood [cn/nearest-n-users :users 10]
+                     :recommender cr/user-based-generic-boolean}
+                    (cortex/create-recommender-builder model)) ]
+    (cortex/recommender builder model)))
 
-(defn stats-ubl-recommender
-  []
-  (let [recommender-builder (cortex/user-based-recommender-builder :likes)
-        data-model (-> system
-                       :likes-path
-                       cd/load-likes-file)]
-    (cortex/stats recommender-builder
-                  data-model)))
+(defn run-score
+  [data-key]
+  (cortex/score {:similarity cs/log-likelihood
+                 :neighborood [cn/nearest-n-users :users 10]
+                 :recommender cr/user-based-generic}
+                (cm/load-file (get-in system [:data (keyword data-key)]))))
 
-(defn score-ubr-recommender
-  ([]
-     (score-ubr-recommender (:ratings-path system)))
-  ([data-path]
-     (let [recommender-builder (cortex/user-based-recommender-builder :ratings)
-           data-model (cd/load-ratings-file data-path)]
-       (cortex/score recommender-builder
-                     data-model))))
+(defn run-score-boolean
+  [data-key]
+  (cortex/score {:similarity cs/log-likelihood
+                 :neighborood [cn/nearest-n-users :users 10]
+                 :recommender cr/user-based-generic-boolean}
+                (cm/load-boolean-file (get-in system [:data (keyword data-key)]))
+                (cm/boolean-model-builder)))
 
-(defn stats-ubr-recommender
-  []
-  (let [recommender-builder (cortex/user-based-recommender-builder :ratings)
-        data-model (-> system
-                       :ratings-path
-                       cd/load-ratings-file)]
-    (cortex/stats recommender-builder
-                  data-model)))
+(defn run-stats
+  [data-key]
+  (cortex/stats {:similarity cs/log-likelihood
+                 :neighborood [cn/nearest-n-users :users 10]
+                 :recommender cr/user-based-generic}
+                (cm/load-file (get-in system [:data (keyword data-key)]))))
+
+(defn run-stats-boolean
+  [data-key]
+  (cortex/stats {:similarity cs/log-likelihood
+                 :neighborood [cn/nearest-n-users :users 10]
+                 :recommender cr/user-based-generic-boolean}
+                (cm/load-boolean-file (get-in system [:data (keyword data-key)]))
+                (cm/boolean-model-builder)))
 
 (defn stop
   "Stops the system if it is currently running, updates the Var

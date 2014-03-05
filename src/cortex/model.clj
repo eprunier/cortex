@@ -1,4 +1,4 @@
-(ns cortex.data
+(ns cortex.model
   (:refer-clojure :exclude [load-file])
   (:require [clojure.java.io :as io])
   (:import [org.apache.mahout.cf.taste.eval DataModelBuilder]
@@ -10,17 +10,13 @@
 ;; File data models
 ;;
 
-(defn- load-file
+(defn load-file
   [location]
   (-> location
       io/file
       (FileDataModel.)))
 
-(defn load-ratings-file
-  [location]
-  (load-file location))
-
-(defn load-likes-file
+(defn load-boolean-file
   [location]
   (-> location
       load-file
@@ -32,7 +28,7 @@
 ;; Data model builders
 ;;
 
-(defn likes-data-builder
+(defn boolean-model-builder
   []
   (proxy [DataModelBuilder] []
     (buildDataModel [trainingData]

@@ -1,12 +1,19 @@
 (ns cortex.similarity
   (:import [org.apache.mahout.cf.taste.impl.similarity
             PearsonCorrelationSimilarity
-            LogLikelihoodSimilarity]))
+            LogLikelihoodSimilarity
+            EuclideanDistanceSimilarity]))
 
-(defn likes-similarity
+(defn log-likelihood
   [model]
   (LogLikelihoodSimilarity. model))
 
-(defn ratings-similarity
+(defn pearson-correlation
+  "Pearson correlation requires preference values."
   [model]
   (PearsonCorrelationSimilarity. model))
+
+(defn euclidean-distance
+  "Pearson correlation requires preference values."
+  [model]
+  (EuclideanDistanceSimilarity. model))
