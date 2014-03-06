@@ -15,13 +15,16 @@
    [cortex.similarity :as cs]   
    [cortex.neighborhood :as cn]
    [cortex.recommender :as cr]
-   [cortex.model :as cm]))
+   [cortex.model :as cm]
+   [cortex.evaluator :as ce]))
 
 (def system
   "A Var containing an object representing the application under
   development."
-  {:data {:intro "sample-data/intro.csv" 
-          :sample "sample-data/ua.base"
+  {:data {:ratings-small "sample-data/intro.csv" 
+          :ratings-100k "sample-data/ratings-100k.csv"
+          :ratings-1M "sample-data/ratings-1M.csv"
+          :ratings-10M "sample-data/ratings-10M.csv"
           :boolean-sample "sample-data/user_friends.dat"}})
 
 (defn init
@@ -33,40 +36,44 @@
   [data-key]
   (let [model (cm/load-file (get-in system [:data (keyword data-key)]))
         builder (-> {:similarity cs/log-likelihood
-                     :neighborood [cn/nearest-n-users :users 10]
+                     :neighborood (cn/nearest-n-users 10)
                      :recommender cr/user-based-generic-boolean}
                     (cortex/create-recommender-builder model)) ]
     (cortex/recommender builder model)))
 
-(defn run-score
-  [data-key]
-  (cortex/score {:similarity cs/log-likelihood
-                 :neighborood [cn/nearest-n-users :users 10]
-                 :recommender cr/user-based-generic}
-                (cm/load-file (get-in system [:data (keyword data-key)]))))
+(defn evaluate-score
+  [data-key ratio percentage]
+  (cortex/evaluate {:similarity cs/pearson-correlation
+                    :neighborood (cn/nearest-n-users 100)
+                    :recommender cr/user-based-generic}
+                   {:model (cm/load-file (get-in system [:data (keyword data-key)]))
+                    :evaluator (ce/average ratio percentage)}))
 
-(defn run-score-boolean
-  [data-key]
-  (cortex/score {:similarity cs/log-likelihood
-                 :neighborood [cn/nearest-n-users :users 10]
-                 :recommender cr/user-based-generic-boolean}
-                (cm/load-boolean-file (get-in system [:data (keyword data-key)]))
-                (cm/boolean-model-builder)))
+(defn evaluate-score-boolean
+  [data-key ratio percentage]
+  (cortex/evaluate {:similarity cs/log-likelihood
+                    :neighborood (cn/nearest-n-users 10)
+                    :recommender cr/user-based-generic-boolean}
+                   {:model (cm/load-boolean-file (get-in system [:data (keyword data-key)]))
+                    :model-builder (cm/boolean-model-builder)
+                    :evaluator (ce/average ratio percentage)}))
 
-(defn run-stats
-  [data-key]
-  (cortex/stats {:similarity cs/log-likelihood
-                 :neighborood [cn/nearest-n-users :users 10]
-                 :recommender cr/user-based-generic}
-                (cm/load-file (get-in system [:data (keyword data-key)]))))
+(defn evaluate-stats
+  [data-key nb-reco percentage]
+  (cortex/evaluate {:similarity cs/log-likelihood
+                    :neighborood (cn/nearest-n-users 10)
+                    :recommender cr/user-based-generic}
+                   {:model (cm/load-file (get-in system [:data (keyword data-key)]))
+                    :evaluator (ce/stats nb-reco ce/stats-choose-threshold percentage)}))
 
-(defn run-stats-boolean
-  [data-key]
-  (cortex/stats {:similarity cs/log-likelihood
-                 :neighborood [cn/nearest-n-users :users 10]
-                 :recommender cr/user-based-generic-boolean}
-                (cm/load-boolean-file (get-in system [:data (keyword data-key)]))
-                (cm/boolean-model-builder)))
+(defn evaluate-stats-boolean
+  [data-key nb-reco percentage]
+  (cortex/evaluate {:similarity cs/log-likelihood
+                    :neighborood (cn/nearest-n-users 10)
+                    :recommender cr/user-based-generic-boolean}
+                   {:model (cm/load-file (get-in system [:data (keyword data-key)]))
+                    :model-builder (cm/boolean-model-builder)
+                    :evaluator (ce/stats nb-reco ce/stats-choose-threshold percentage)}))
 
 (defn stop
   "Stops the system if it is currently running, updates the Var

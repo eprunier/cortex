@@ -5,7 +5,6 @@
            [org.apache.mahout.cf.taste.impl.model GenericBooleanPrefDataModel]
            [org.apache.mahout.cf.taste.impl.model.file FileDataModel]))
 
-
 ;;
 ;; File data models
 ;;

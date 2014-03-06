@@ -1,7 +1,9 @@
 Data sets from grouplens.com
 
 Data sets with ratings
-- ua.base (MovieLens 100k data set)
+- ratings-100k.csv (MovieLens 100k data set)
+- ratings-1M.csv (MovieLens 1M data set)
+- ratings-10M.csv (MovieLens 10M data set)
 
 Data sets without ratings
 - user_friends.dat (Last.FM data set)
