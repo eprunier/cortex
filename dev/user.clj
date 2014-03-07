@@ -22,9 +22,9 @@
   "A Var containing an object representing the application under
   development."
   {:data {:ratings-small "sample-data/intro.csv" 
-          :ratings-100k "sample-data/ratings-100k.csv"
-          :ratings-1M "sample-data/ratings-1M.csv"
-          :ratings-10M "sample-data/ratings-10M.csv"
+          :ratings-100k "sample-data/ratings-100k.csv.gz"
+          :ratings-1M "sample-data/ratings-1M.csv.gz"
+          :ratings-10M "sample-data/ratings-10M.csv.gz"
           :boolean-sample "sample-data/user_friends.dat"}})
 
 (defn init
