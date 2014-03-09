@@ -29,8 +29,8 @@
 
 (defn boolean-model-builder
   []
-  (proxy [DataModelBuilder] []
-    (buildDataModel [trainingData]
+  (reify DataModelBuilder
+    (buildDataModel [this trainingData]
       (-> trainingData
           (GenericBooleanPrefDataModel/toDataMap)
           (GenericBooleanPrefDataModel.)))))

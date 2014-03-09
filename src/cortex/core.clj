@@ -34,8 +34,8 @@
   (let [similarity-fn (parse-similarity similarity)
         neighborood-fn (parse-neighborhood neighborood similarity-fn)
         recommender-fn (parse-recommender recommender similarity-fn neighborood-fn)]
-    (proxy [RecommenderBuilder] []
-      (buildRecommender [model]
+    (reify RecommenderBuilder
+      (buildRecommender [this model]
         (recommender-fn model)))))
 
 (defn recommender
