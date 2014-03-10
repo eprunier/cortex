@@ -14,6 +14,6 @@
   (PearsonCorrelationSimilarity. model))
 
 (defn euclidean-distance
-  "Pearson correlation requires preference values."
+  "Euclidean distance requires preference values."
   [model]
   (EuclideanDistanceSimilarity. model))

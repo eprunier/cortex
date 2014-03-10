@@ -3,7 +3,7 @@
   (:require [cortex.evaluator :as eval]))
 
 ;;
-;; Recommender builder
+;; ## Recommender builder
 ;;
 
 (defn- parse-similarity
@@ -29,7 +29,15 @@
                       model))))
 
 (defn create-recommender-builder
-  "Parse specs and create a recommender."
+  "Parse specs and create a recommender builder which can be used 
+   for recommender creation or recommender evaluation.
+
+   Exemple of specs for a user based recommender with 
+   nearest n users neighborood and pearson correlation similiarity:
+
+       {:similarity cs/pearson-correlation
+        :neighborood (cn/nearest-n-users 100)
+        :recommender cr/user-based-generic}"
   [{:keys [similarity neighborood recommender] :as specs} model]
   (let [similarity-fn (parse-similarity similarity)
         neighborood-fn (parse-neighborhood neighborood similarity-fn)
@@ -46,10 +54,11 @@
 
 
 ;;
-;; Recommendations generation
+;; ## Recommendations generation
 ;;
 
 (defn recommend
+  "Compute a list of recommendations."
   [recommender user nb-results]
   (map (fn [result] 
          {:item (.getItemID result) 
@@ -58,11 +67,23 @@
 
 
 ;;
-;; Recommendation evaluation
+;; ## Recommendation evaluation
 ;;
 
 (defn evaluate
-  "Compute the score for a recommender defined by reco-specs and an evaluator defined by eval-specs."
+  "Compute the score for a recommender defined by reco-specs and 
+   an evaluator defined by eval-specs.
+
+   Exemple of specs:
+
+     {:model (model/load-file \"path-to-file\")
+      :evaluator (evaluator/average 0.9 0.1)}
+
+  Exemple of specs for a data model without preferences:
+
+    {:model (model/load-boolean-file \"path-to-file\")
+     :model-builder (model/boolean-model-builder)
+     :evaluator (evaluator/average 0.9 0.1)}"
   [reco-specs 
    {:keys [model model-builder evaluator] :as eval-specs}]
   (evaluator (create-recommender-builder reco-specs model)

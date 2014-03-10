@@ -6,7 +6,7 @@
            [org.apache.mahout.cf.taste.impl.model.file FileDataModel]))
 
 ;;
-;; File data models
+;; ## File data models
 ;;
 
 (defn load-file
@@ -24,7 +24,7 @@
 
 
 ;;
-;; Data model builders
+;; ## Data model builders
 ;;
 
 (defn boolean-model-builder
